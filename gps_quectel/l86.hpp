@@ -70,7 +70,7 @@ typedef struct GPS_data
     char Node_Type[2];
 }GPS_data;
 
-extern double flipBaseGPS(char gMin);
+extern double flipBaseGPS(char *gMin);
 
 RMC_data Parse_RMC_sentence(char RMC_sentence[MAX_NMEA_LENGTH]);
 void Print_RMC_data(RMC_data *RMC_data_print);

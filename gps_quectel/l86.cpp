@@ -1,20 +1,19 @@
 #include "l86.hpp"
 #include <string.h>
 #include <stdio.h>
-#include "mbed.h"
 
 #include <stdlib.h>
 #include <errno.h>
 
 #ifdef DEBUGGER
 //RawSerial pc2(USBTX, USBRX);    // USART2
-extern RawSerial pc;
+//extern RawSerial pc;
 #endif
 
 /* Parse NMEA RMC sentence into RMC data struct */
 RMC_data Parse_RMC_sentence(char RMC_sentence[MAX_NMEA_LENGTH]){
     const char delimeter[2] = ",";
-    char *token = "";
+    const char *token = "";
     int i = 0;
     char temp[11][12];          /* [11][12]: 11 strings, of length 12 */
     RMC_data RMC_parsed;
@@ -52,7 +51,7 @@ RMC_data Parse_RMC_sentence(char RMC_sentence[MAX_NMEA_LENGTH]){
 
 // Use GPS data parse function? // parses into data formats that will be sent over LoRa
 
-/* Print RMC_data struct to pc USART for debugging */
+/* Print RMC_data struct to pc USART for debugging 
 void Print_RMC_data(RMC_data *RMC_data_print){
     pc.printf("RMC_Message: %s",RMC_data_print->Message);
     pc.printf("UTC_Time: %s\r\n",RMC_data_print->UTC_Time);
@@ -68,6 +67,7 @@ void Print_RMC_data(RMC_data *RMC_data_print){
         pc.printf("Mode: %s\r\n",RMC_data_print->Mode);
     }
 }
+*/
 
 /* Parse RMC_data struct into GPS data struct ready for sending over LoRa */
 GPS_data Parse_RMC_data(RMC_data RMC_parsed){
@@ -138,15 +138,14 @@ void Print_GPS_data(GPS_data GPS_data_print){
     double lat = flipBaseGPS(GPS_data_print.Latitude);
     double lon = flipBaseGPS(GPS_data_print.Longitude);
     
-    pc.printf("UTC_Time: %s\r\n",GPS_data_print.UTC_Time);
-    pc.printf("Status: %s\r\n",GPS_data_print.Valid);
-    pc.printf("Latitude: %s\r\n",GPS_data_print.Latitude);
-    pc.printf("Longitude: %s\r\n",GPS_data_print.Longitude);
-    pc.printf("Latitude: %lf\r\n",lat);
-    pc.printf("Longitude: %lf\r\n",lon);
-    pc.printf("Speed: %s\r\n",GPS_data_print.Speed_Over_Ground);
-    pc.printf("Course: %s\r\n",GPS_data_print.Course_Over_Ground);
-    //pc.printf("Date: %s\r\n",GPS_data_print.Date);
+    printf("UTC_Time: %s\r\n",GPS_data_print.UTC_Time);
+    printf("Status: %s\r\n",GPS_data_print.Valid);
+    printf("Latitude: %s\r\n",GPS_data_print.Latitude);
+    printf("Longitude: %s\r\n",GPS_data_print.Longitude);
+    printf("Latitude: %lf\r\n",lat);
+    printf("Longitude: %lf\r\n",lon);
+    printf("Speed: %s\r\n",GPS_data_print.Speed_Over_Ground);
+    printf("Course: %s\r\n",GPS_data_print.Course_Over_Ground);
 }
 
 
