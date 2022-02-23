@@ -11,6 +11,7 @@ PORT ?= /dev/ttyUSB0
 RIOTBASE ?= $(CURDIR)/../../RIOT-pulga/
 
 FEATURES_REQUIRED += cpp
+FEATURES_REQUIRED += periph_uart
 
 # Comment this out to disable code in RIOT that does safety checking
 # which is not needed in a production environment but helps in the

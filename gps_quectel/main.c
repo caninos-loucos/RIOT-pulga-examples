@@ -6,6 +6,32 @@
 #include "shell_commands.h"
 
 #include "l86.hpp"
+#include "ringbuffer.h"
+#include "periph/uart.h"
+
+#ifndef UART_BUFSIZE
+#define UART_BUFSIZE        (128U)
+#endif
+typedef struct {
+    char rx_mem[UART_BUFSIZE];
+    ringbuffer_t rx_buf;
+} uart_ctx_t;
+static uart_ctx_t ctx[UART_NUMOF];
+static void rx_cb(void *arg, uint8_t data)
+{
+    uart_t dev = (uart_t)(uintptr_t)arg;
+
+    ringbuffer_add_one(&ctx[dev].rx_buf, data);
+
+    printf("rx: %c\n", data);
+
+    /*if (!test_mode && data == '\n') {
+        msg_t msg;
+        msg.content.value = (uint32_t)dev;
+        msg_send(&msg, printer_pid);
+    }*/
+}
+
 
 RMC_data RMC;
 GPS_data GPS_parse;
@@ -81,6 +107,20 @@ void gps_receive(void) {
 int main(void)
 {
     (void) puts("Welcome to RIOT!");
+
+    /* initialize UART */
+    int dev = 1;
+    uint32_t baud = 9600;
+    int res = uart_init(UART_DEV(dev), baud, rx_cb, (void *)dev);
+    if (res != UART_OK) {
+        puts("Error: Unable to initialize UART device");
+        return 1;
+    }
+    printf("Success: Initialized UART_DEV(%i) at BAUD %"PRIu32"\n", dev, baud);
+    uart_write(UART_DEV(dev), (uint8_t *)PMTK_SET_NMEA_OUTPUT_RMC, strlen(PMTK_SET_NMEA_OUTPUT_RMC));
+    uart_write(UART_DEV(dev), (uint8_t *)PMTK_SET_UPDATE_F_2HZ, strlen(PMTK_SET_UPDATE_F_2HZ));
+    uart_write(UART_DEV(dev), (uint8_t *)"XXX\n", 4);
+    puts("Wrote gps start to uart");
 
     char line_buf[SHELL_DEFAULT_BUFSIZE];
     shell_run(NULL, line_buf, SHELL_DEFAULT_BUFSIZE);
