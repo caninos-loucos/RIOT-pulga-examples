@@ -13,9 +13,9 @@
 #define PMTK_SET_NMEA_OUTPUT_RMC    "$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29\r\n"
 #define PMTK_SET_UPDATE_F_2HZ       "$PMTK300,500,0,0,0,0*28\r\n"
 
-#define PRINTER_PRIO        (THREAD_PRIORITY_MAIN - 1)
-static kernel_pid_t printer_pid;
-static char printer_stack[THREAD_STACKSIZE_MAIN];
+#define GPS_HANDLER_PRIO        (THREAD_PRIORITY_MAIN - 1)
+static kernel_pid_t gps_handler_pid;
+static char gps_handler_stack[THREAD_STACKSIZE_MAIN];
 
 #ifndef UART_BUFSIZE
 #define UART_BUFSIZE        (128U)
@@ -25,22 +25,22 @@ typedef struct {
     char rx_mem[UART_BUFSIZE];
     ringbuffer_t rx_buf;
 } uart_ctx_t;
-static uart_ctx_t ctx[UART_NUMOF];
+static uart_ctx_t ctx;
 
 void rx_cb(void *arg, uint8_t data)
 {
     uart_t dev = (uart_t)(uintptr_t)arg;
 
-    ringbuffer_add_one(&ctx[dev].rx_buf, data);
+    ringbuffer_add_one(&ctx.rx_buf, data);
 
     if (data == '\n') {
         msg_t msg;
         msg.content.value = (uint32_t)dev;
-        msg_send(&msg, printer_pid);
+        msg_send(&msg, gps_handler_pid);
     }
 }
 
-static void *printer(void *arg)
+static void *gps_handler(void *arg)
 {
     (void)arg;
     msg_t msg;
@@ -52,11 +52,10 @@ static void *printer(void *arg)
 
     while (1) {
         msg_receive(&msg);
-        uart_t dev = (uart_t)msg.content.value;
         char c;
 
         do {
-            c = (char)ringbuffer_get_one(&(ctx[dev].rx_buf));
+            c = (char)ringbuffer_get_one(&(ctx.rx_buf));
             if (c == '\n') {
                 line[pos++] = c;
 		pos = 0;
@@ -107,31 +106,38 @@ static void *printer(void *arg)
     return NULL;
 }
 
-int main(void)
+int init_gps(void)
 {
-    (void) puts("Welcome to RIOT!");
-
     /* initialize UART */
     int dev = 1;
     uint32_t baud = 9600;
+
     int res = uart_init(UART_DEV(dev), baud, rx_cb, (void *)dev);
     if (res != UART_OK) {
         puts("Error: Unable to initialize UART device");
         return 1;
     }
     printf("Success: Initialized UART_DEV(%i) at BAUD %"PRIu32"\n", dev, baud);
+
+    /* tell gps chip to wake up */
     uart_write(UART_DEV(dev), (uint8_t *)PMTK_SET_NMEA_OUTPUT_RMC, strlen(PMTK_SET_NMEA_OUTPUT_RMC));
     uart_write(UART_DEV(dev), (uint8_t *)PMTK_SET_UPDATE_F_2HZ, strlen(PMTK_SET_UPDATE_F_2HZ));
-    puts("Wrote gps start to uart");
+    puts("GPS Started.");
+    return 0;
+}
 
-    /* initialize ringbuffers */
-    for (unsigned i = 0; i < UART_NUMOF; i++) {
-        ringbuffer_init(&(ctx[i].rx_buf), ctx[i].rx_mem, UART_BUFSIZE);
-    }
+int main(void)
+{
+    (void) puts("Welcome to RIOT!");
 
-    /* start the printer thread */
-    printer_pid = thread_create(printer_stack, sizeof(printer_stack),
-                                PRINTER_PRIO, 0, printer, NULL, "printer");
+    init_gps();
+
+    /* initialize ringbuffer */
+    ringbuffer_init(&(ctx.rx_buf), ctx.rx_mem, UART_BUFSIZE);
+
+    /* start the gps_handler thread */
+    gps_handler_pid = thread_create(gps_handler_stack, sizeof(gps_handler_stack),
+                                GPS_HANDLER_PRIO, 0, gps_handler, NULL, "gps_handler");
 
     char line_buf[SHELL_DEFAULT_BUFSIZE];
     shell_run(NULL, line_buf, SHELL_DEFAULT_BUFSIZE);
