@@ -4,105 +4,108 @@
 #include "thread.h"
 #include "shell.h"
 #include "shell_commands.h"
+#include "xtimer.h"
 
-#include "l86.hpp"
 #include "ringbuffer.h"
 #include "periph/uart.h"
+#include "minmea.h"
+
+#define PMTK_SET_NMEA_OUTPUT_RMC    "$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29\r\n"
+#define PMTK_SET_UPDATE_F_2HZ       "$PMTK300,500,0,0,0,0*28\r\n"
+
+#define PRINTER_PRIO        (THREAD_PRIORITY_MAIN - 1)
+static kernel_pid_t printer_pid;
+static char printer_stack[THREAD_STACKSIZE_MAIN];
 
 #ifndef UART_BUFSIZE
 #define UART_BUFSIZE        (128U)
 #endif
+
 typedef struct {
     char rx_mem[UART_BUFSIZE];
     ringbuffer_t rx_buf;
 } uart_ctx_t;
 static uart_ctx_t ctx[UART_NUMOF];
-static void rx_cb(void *arg, uint8_t data)
+
+void rx_cb(void *arg, uint8_t data)
 {
     uart_t dev = (uart_t)(uintptr_t)arg;
 
     ringbuffer_add_one(&ctx[dev].rx_buf, data);
 
-    printf("rx: %c\n", data);
-
-    /*if (!test_mode && data == '\n') {
+    if (data == '\n') {
         msg_t msg;
         msg.content.value = (uint32_t)dev;
         msg_send(&msg, printer_pid);
-    }*/
-}
-
-
-RMC_data RMC;
-GPS_data GPS_parse;
-volatile int Char_index = 0;                  // index for char array
-char Rx_data[MAX_NMEA_LENGTH] = "0";          // char array to store received bytes
-volatile uint8_t GPS_data_ready = 0;
-uint8_t valid = 0;
-volatile uint8_t sending = 0;
-volatile int primeiraVez=1;
-double quectelLat = 0;
-double quectelLon = 0;
-
-void gps_receive(void);
-
-void gps_receive(void) {
-	// FIXME: serial code needs to be uncommented and fixed
-    // Note: you need to actually read from the serial to clear the RX interrupt
-    //while(uart_gps.readable()) {
-    while(0) {
-        if(Rx_data[0] != '$') Char_index = 0;
-        //char incoming = uart_gps.getc();
-        char incoming = ' ';
-        
-        Rx_data[Char_index] = incoming;
-    
-       if(Rx_data[Char_index] == '\n'){    // Received the end of an NMEA scentence
-            if((strncmp(GPRMC_Tag,Rx_data,(sizeof(GPRMC_Tag)-1)) == 0) || (strncmp(GNRMC_Tag,Rx_data,(sizeof(GNRMC_Tag)-1)) == 0)){
-                RMC = Parse_RMC_sentence(Rx_data);
-                if(strcmp(RMC.Status, "A") == 0){
-                    // GPS_status = 0;    // Turn status LED off
-                    valid = 1;
-                    // GPS_parse = Parse_RMC_data(RMC); // Parse into format suitable for Tom (Dinghy_RaceTrak software)
-                }
-                else{
-                    // GPS_status = 1;
-                }                
-                if (sending){
-                    Char_index = 0;
-                    memset(Rx_data,0,sizeof(Rx_data));
-                    //uart_gps.attach(&serial_gps_post_to_queue, Serial::RxIrq);
-                    return;
-                }
-                GPS_data_ready = 0;
-                GPS_parse = Parse_RMC_data(RMC); // Parse into format suitable for Tom (Dinghy_RaceTrak software)
-                GPS_data_ready = 1;
-                //Print_GPS_data(GPS_parse);
-                quectelLat = flipBaseGPS(GPS_parse.Latitude);
-                quectelLon = flipBaseGPS(GPS_parse.Longitude);
-                if(quectelLat !=0){
-                    //contadorLora = 0;
-                    printf("...\n\r");
-                    if(primeiraVez) {
-			// initialized
-                        primeiraVez=0; 
-                    }
-                }
-                //send_GPS_Via_Lora();
-                //contadorLora++;
-            }
-            Char_index = 0;
-            memset(Rx_data,0,sizeof(Rx_data));
-        }
-        else{
-            Char_index++;
-        }
     }
-    //uart_gps.attach(&serial_gps_post_to_queue, Serial::RxIrq);
-    return;
-    // store chars into a string then process into LAT, LONG, SOG, COG & DATETIME, VALID/INVLAID
 }
 
+static void *printer(void *arg)
+{
+    (void)arg;
+    msg_t msg;
+    msg_t msg_queue[8];
+    msg_init_queue(msg_queue, 8);
+
+    int pos = 0;
+    char line[MINMEA_MAX_LENGTH];
+
+    while (1) {
+        msg_receive(&msg);
+        uart_t dev = (uart_t)msg.content.value;
+        char c;
+
+        do {
+            c = (char)ringbuffer_get_one(&(ctx[dev].rx_buf));
+            if (c == '\n') {
+                line[pos++] = c;
+		pos = 0;
+                //printf("Will parse line of sentence id %d: %s\n", minmea_sentence_id(line, false), line);
+                switch (minmea_sentence_id(line, false)) {
+                    case MINMEA_SENTENCE_RMC: {
+                        struct minmea_sentence_rmc frame;
+                        if (minmea_parse_rmc(&frame, line)) {
+                            printf("$RMC floating point degree coordinates and speed: (%f,%f) %f\n",
+                                    minmea_tocoord(&frame.latitude),
+                                    minmea_tocoord(&frame.longitude),
+                                    minmea_tofloat(&frame.speed));
+                        } else {
+                            puts("Could not parse $RMC message. Possibly incomplete");
+                        }
+                    } break;
+
+                    case MINMEA_SENTENCE_GGA: {
+                        struct minmea_sentence_gga frame;
+                        if (minmea_parse_gga(&frame, line)) {
+                            printf("$GGA: fix quality: %d\n", frame.fix_quality);
+                        }
+                    } break;
+
+                    case MINMEA_SENTENCE_GSV: {
+                        struct minmea_sentence_gsv frame;
+                        if (minmea_parse_gsv(&frame, line)) {
+                            printf("$GSV: message %d of %d\n", frame.msg_nr, frame.total_msgs);
+                            printf("$GSV: sattelites in view: %d\n", frame.total_sats);
+                            for (int i = 0; i < 4; i++)
+                                printf("$GSV: sat nr %d, elevation: %d, azimuth: %d, snr: %d dbm\n",
+                                    frame.sats[i].nr,
+                                    frame.sats[i].elevation,
+                                    frame.sats[i].azimuth,
+                                    frame.sats[i].snr);
+                        }
+                    } break;
+                    default: break;
+                }
+            }
+            else {
+                line[pos++] = c;
+            }
+        } while (c != '\n');
+    }
+
+    /* this should never be reached */
+    return NULL;
+}
 
 int main(void)
 {
@@ -119,8 +122,16 @@ int main(void)
     printf("Success: Initialized UART_DEV(%i) at BAUD %"PRIu32"\n", dev, baud);
     uart_write(UART_DEV(dev), (uint8_t *)PMTK_SET_NMEA_OUTPUT_RMC, strlen(PMTK_SET_NMEA_OUTPUT_RMC));
     uart_write(UART_DEV(dev), (uint8_t *)PMTK_SET_UPDATE_F_2HZ, strlen(PMTK_SET_UPDATE_F_2HZ));
-    uart_write(UART_DEV(dev), (uint8_t *)"XXX\n", 4);
     puts("Wrote gps start to uart");
+
+    /* initialize ringbuffers */
+    for (unsigned i = 0; i < UART_NUMOF; i++) {
+        ringbuffer_init(&(ctx[i].rx_buf), ctx[i].rx_mem, UART_BUFSIZE);
+    }
+
+    /* start the printer thread */
+    printer_pid = thread_create(printer_stack, sizeof(printer_stack),
+                                PRINTER_PRIO, 0, printer, NULL, "printer");
 
     char line_buf[SHELL_DEFAULT_BUFSIZE];
     shell_run(NULL, line_buf, SHELL_DEFAULT_BUFSIZE);
