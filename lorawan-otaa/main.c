@@ -55,15 +55,11 @@ static sx127x_t sx127x;
 static ztimer_t timer;
 #endif
 
-/* ATC limitation: it only uses 8 channels
- * however there's a 8-channel offset, so we set this to 16. */
-#define AU915_MAX_NB_CHANNELS 16
-
 static const char *message = "123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_";
 
 static uint8_t deveui[LORAMAC_DEVEUI_LEN];
 static uint8_t appeui[LORAMAC_APPEUI_LEN];
-//static uint8_t appkey[LORAMAC_APPKEY_LEN];
+static uint8_t appkey[LORAMAC_APPKEY_LEN];
 
 static void _alarm_cb(void *arg)
 {
@@ -129,7 +125,7 @@ int main(void)
     /* Convert identifiers and application key */
     fmt_hex_bytes(deveui, CONFIG_LORAMAC_DEV_EUI_DEFAULT);
     fmt_hex_bytes(appeui, CONFIG_LORAMAC_APP_EUI_DEFAULT);
-    //fmt_hex_bytes(appkey, CONFIG_LORAMAC_APP_KEY_DEFAULT);
+    fmt_hex_bytes(appkey, CONFIG_LORAMAC_APP_KEY_DEFAULT);
 
     /* Initialize the radio driver */
     sx127x_setup(&sx127x, &sx127x_params[0], 0);
@@ -140,7 +136,7 @@ int main(void)
     semtech_loramac_init(&loramac);
     semtech_loramac_set_deveui(&loramac, deveui);
     semtech_loramac_set_appeui(&loramac, appeui);
-    //semtech_loramac_set_appkey(&loramac, appkey);
+    semtech_loramac_set_appkey(&loramac, appkey);
 
     /* Use a fast datarate, e.g. BW125/SF7 in EU868 */
     semtech_loramac_set_dr(&loramac, LORAMAC_DR_5);
@@ -150,6 +146,7 @@ int main(void)
      * keys.
      */
     puts("Starting join procedure");
+    printf("Using DEVEUI=%s and APPEUI=%s, APPKEY=%s\n", CONFIG_LORAMAC_DEV_EUI_DEFAULT, CONFIG_LORAMAC_APP_EUI_DEFAULT, CONFIG_LORAMAC_APP_KEY_DEFAULT);
     if (semtech_loramac_join(&loramac, LORAMAC_JOIN_OTAA) != SEMTECH_LORAMAC_JOIN_SUCCEEDED) {
         puts("Join procedure failed");
         return 1;

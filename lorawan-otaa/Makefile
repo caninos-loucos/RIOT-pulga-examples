@@ -4,12 +4,14 @@ APPLICATION = lorawan
 # Use the pulga board (nrf52840dk under the hood) by default:
 BOARD ?= pulga
 
+PORT ?= /dev/ttyUSB0
+
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../../RIOT-pulga/
 
-DEVEUI ?= 22aaa448e937e752
-APPEUI ?= aac3bdfa80f22c5c
-#APPKEY ?= 8ee16ad7a0cec09253731fab5effa4c4
+DEVEUI ?= 62e2525867f553e3
+APPEUI ?= 2dbba4e2dfa4613d
+APPKEY ?= 90c7575d5b011772167e86e3a3850664
 
 # Default radio driver is Semtech SX1276 (used by the B-L072Z-LRWAN1 board)
 DRIVER ?= sx1272
@@ -43,7 +45,7 @@ include $(RIOTBASE)/Makefile.include
 
 ifndef CONFIG_KCONFIG_USEMODULE_LORAWAN
   # OTAA compile time configuration keys
-  #CFLAGS += -DCONFIG_LORAMAC_APP_KEY_DEFAULT=\"$(APPKEY)\"
+  CFLAGS += -DCONFIG_LORAMAC_APP_KEY_DEFAULT=\"$(APPKEY)\"
   CFLAGS += -DCONFIG_LORAMAC_APP_EUI_DEFAULT=\"$(APPEUI)\"
   CFLAGS += -DCONFIG_LORAMAC_DEV_EUI_DEFAULT=\"$(DEVEUI)\"
 
