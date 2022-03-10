@@ -9,6 +9,7 @@ PORT ?= /dev/ttyUSB0
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../../RIOT-pulga/
 
+# device tags in ns.atc.everynet.io: RIOT, example
 DEVEUI ?= 62e2525867f553e3
 APPEUI ?= 2dbba4e2dfa4613d
 APPKEY ?= 90c7575d5b011772167e86e3a3850664
