@@ -3,6 +3,10 @@ BOARD ?= pulga
 PORT ?= /dev/ttyUSB0
 RIOTBASE ?= $(CURDIR)/../../RIOT-pulga/
 
+ifeq (1,$(IS_SENDER))
+CFLAGS += -DIS_SENDER=1
+endif
+
 USEMODULE += od
 USEMODULE += shell
 USEMODULE += shell_commands

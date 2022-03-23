@@ -350,6 +350,10 @@ int main(void)
 {
     init_cmd(0, NULL);
 
+    netdev_t *netdev = &sx127x.netdev;
+    uint32_t chan = 915000000;
+    netdev->driver->set(netdev, NETOPT_CHANNEL_FREQUENCY, &chan, sizeof(chan));
+
     _recv_pid = thread_create(stack, sizeof(stack), THREAD_PRIORITY_MAIN - 1,
                               THREAD_CREATE_STACKTEST, _recv_thread, NULL,
                               "recv_thread");
@@ -359,13 +363,16 @@ int main(void)
         return 1;
     }
 
-    /*while (1) {
+#ifdef IS_SENDER
+    puts("Using sender mode...");
+    while (1) {
         puts("waiting...");
         ztimer_sleep(ZTIMER_SEC, 5);
         puts("will send now");
         char *argv[2] = {"send", "123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_"};
         send_cmd(2, argv);
-    }*/
+    }
+#endif
 
     /* start the shell */
     puts("Initialization successful - starting the shell now");
