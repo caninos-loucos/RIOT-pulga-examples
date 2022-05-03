@@ -23,11 +23,6 @@ DRIVER ?= sx1272
 # Default region is Europe and default band is 868MHz
 LORA_REGION ?= AU915
 
-# force semtech-loramac to use only 8 channels (plus 8 rx channels)
-# this is a requirement of ATC in Brazil
-$(shell sed -i -E "s/(.*AU915_MAX_NB_CHANNELS.*)72/\116/g" $(RIOTBASE)/build/pkg/semtech-loramac/src/mac/region/RegionAU915.h)
-
-
 # Include the Semtech-loramac package
 USEPKG += semtech-loramac
 
