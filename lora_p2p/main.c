@@ -365,6 +365,7 @@ int main(void)
 
 #ifdef IS_SENDER
     puts("Using sender mode...");
+    printf("Channel is %"PRIu32"\n", chan);
     while (1) {
         puts("waiting...");
         ztimer_sleep(ZTIMER_SEC, 5);

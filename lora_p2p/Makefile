@@ -3,6 +3,7 @@ BOARD ?= pulga
 PORT ?= /dev/ttyUSB0
 RIOTBASE ?= $(CURDIR)/../../RIOT-pulga/
 
+$(info IS_SENDER=$(IS_SENDER))
 ifeq (1,$(IS_SENDER))
 CFLAGS += -DIS_SENDER=1
 endif
