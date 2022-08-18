@@ -49,10 +49,6 @@ static sx127x_t sx127x;
 
 static ztimer_t timer;
 
-/* XXX: ATC limitation: it only uses the first 8 channels.
- * (however, the sx127x driver has an 8-channel offset, so we set this to 16) */
-#define AU915_MAX_NB_CHANNELS 8
-
 static const char *message = "123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_";
 
 static uint8_t deveui[LORAMAC_DEVEUI_LEN];
@@ -134,6 +130,11 @@ int main(void)
     semtech_loramac_set_devaddr(&loramac, devaddr);
     semtech_loramac_set_appskey(&loramac, appskey);
     semtech_loramac_set_nwkskey(&loramac, nwkskey);
+
+    /* Set a channels mask that makes it use only the first 8 channels */
+    uint16_t channel_mask[LORAMAC_CHANNELS_MASK_LEN] = { 0 };
+    channel_mask[0] = 0x00FF;
+    semtech_loramac_set_channels_mask(&loramac, channel_mask);
 
     /* Use a fast datarate */
     semtech_loramac_set_dr(&loramac, LORAMAC_DR_5);

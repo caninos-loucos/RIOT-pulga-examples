@@ -10,6 +10,9 @@ PORT ?= /dev/ttyUSB0
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../../RIOT-pulga/
 
+# no pa boost by default
+CFLAGS += -DSX127X_PARAM_PASELECT="SX127X_PA_RFO"
+
 DEVEUI ?= 282278c29f8615c5
 APPEUI ?= 35bd6c8390356a66
 
