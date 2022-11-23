@@ -28,7 +28,7 @@
 #include "fmt.h"
 
 #include "shell.h"
-#include "shell_commands.h"
+//#include "shell_commands.h"
 
 #include "net/loramac.h"
 #include "semtech_loramac.h"

@@ -10,15 +10,15 @@ PORT ?= /dev/ttyUSB0
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../../RIOT-pulga/
 
-# no pa boost by default
-CFLAGS += -DSX127X_PARAM_PASELECT="SX127X_PA_RFO"
+# pa boost by default
+CFLAGS += -DSX127X_PARAM_PASELECT="SX127X_PA_BOOST"
 
-DEVEUI ?= 282278c29f8615c5
-APPEUI ?= 35bd6c8390356a66
+DEVEUI ?= cafe000000000099
+APPEUI ?= cafe000000000099
 
-DEVADDR ?= fdd4b1ea
-NWKSKEY ?= 4036368cc6bc52dd69720689d4017980
-APPSKEY ?= b251033dfc052a6e9382b83c4e2e2f2e
+DEVADDR ?= cafe0099
+NWKSKEY ?= cafe0000000000000000000000000099
+APPSKEY ?= cafe0000000000000000000000000099
 
 # Default radio driver is Semtech SX1276 (used by the B-L072Z-LRWAN1 board)
 DRIVER ?= sx1272
@@ -34,7 +34,8 @@ USEMODULE += fmt
 
 # add shell
 USEMODULE += shell
-USEMODULE += shell_commands
+#USEMODULE += shell_cmds_default
+USEMODULE += shell_cmds
 USEMODULE += ps
 # include and auto-initialize all available sensors
 #USEMODULE += saul_default
